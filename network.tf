@@ -35,13 +35,18 @@ resource "kubernetes_service" "goip-sms-server-udp" {
   }
 }
 
+data "vault_kv_secret_v2" "issuer" {
+  mount = "kubernetes"
+  name  = "cluster"
+}
+
 resource "kubernetes_ingress_v1" "goip-sms-server" {
   metadata {
     name      = "goip-sms-server-ingress"
     namespace = kubernetes_namespace.sms.metadata[0].name
     annotations = {
       "kubernetes.io/ingress.class"                    = "nginx"
-      "cert-manager.io/cluster-issuer"                 = "pfile"
+      "cert-manager.io/cluster-issuer"                 = data.vault_kv_secret_v2.issuer.data["cluster_issuer"]
       "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
       "nginx.ingress.kubernetes.io/ssl-redirect"       = "true"
       "nginx.ingress.kubernetes.io/limit-rpm"          = "60"
