@@ -13,9 +13,8 @@ resource "random_string" "username" {
 }
 
 resource "mysql_user" "goipsms" {
-  user = random_string.username.result
-  host = "%"
-  # host               = "${kubernetes_service.goip-sms-server.metadata[0].name}.${kubernetes_deployment.goip-sms-server.metadata[0].name}"
+  user               = random_string.username.result
+  host               = "%"
   plaintext_password = random_password.password.result
 }
 
