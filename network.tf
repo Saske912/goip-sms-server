@@ -1,6 +1,6 @@
 resource "kubernetes_service" "goip-sms-server-udp" {
   metadata {
-    name      = "goip-sms-server-udp"
+    name      = "sms"
     namespace = kubernetes_namespace.sms.metadata[0].name
   }
   spec {
