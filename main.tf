@@ -33,9 +33,3 @@ provider "mysql" {
   username = "root"
   password = data.vault_kv_secret_v2.mariadb.data["rootPassword"]
 }
-
-variable "goipsms" {
-  type = object({
-    host = string
-  })
-}

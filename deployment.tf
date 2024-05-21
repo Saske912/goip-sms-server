@@ -4,31 +4,8 @@ resource "kubernetes_namespace" "sms" {
   }
 }
 
-data "vault_kv_secret_v2" "goip" {
-  mount = "api_providers"
-  name  = "goip"
-}
-
-resource "kubernetes_secret_v1" "goip-sms-server-env" {
-  metadata {
-    name      = "goip-sms-server-env"
-    namespace = kubernetes_namespace.sms.metadata[0].name
-  }
-
-  data = {
-    MYTIMEZONE          = "Europe/Moscow"
-    GOIP_WEB_LOGIN      = random_string.username.result
-    GOIP_WEB_PASSWORD   = random_password.password.result
-    MYSQL_MAIN_HOST     = data.vault_kv_secret_v2.mariadb.data["implicit_host"]
-    MYSQL_MAIN_PORT     = "3306"
-    MYSQL_MAIN_DB       = mysql_database.goipsms.name
-    MYSQL_MAIN_LOGIN    = random_string.username.result
-    MYSQL_MAIN_PASSWORD = random_password.password.result
-  }
-}
-
+# Define the Docker image for goip-sms-server
 resource "kubernetes_deployment" "goip-sms-server" {
-  depends_on = [kubernetes_job.goip-db-init]
   metadata {
     name      = "goip-sms-server"
     namespace = kubernetes_namespace.sms.metadata[0].name
@@ -56,23 +33,45 @@ resource "kubernetes_deployment" "goip-sms-server" {
       spec {
         container {
           name  = "goip-sms-server"
-          image = "bzmn/goip-sms-server"
-
-          env_from {
-            secret_ref {
-              name = kubernetes_secret_v1.goip-sms-server-env.metadata[0].name
-            }
-          }
-          port {
-            container_port = 44444
-            protocol       = "UDP"
-          }
+          image = "doanbaanh/goip-sms-server:latest"
 
           port {
             container_port = 80
             protocol       = "TCP"
           }
+
+          port {
+            container_port = 44444
+            protocol       = "UDP"
+          }
+
+          volume_mount {
+            name       = "goip-sms-server-data"
+            mount_path = "/var/lib/mysql"
+          }
         }
+        volume {
+          name = "goip-sms-server-data"
+          persistent_volume_claim {
+            claim_name = "goip-sms-server-data"
+          }
+        }
+      }
+    }
+  }
+}
+
+# Define the persistent volume claim for goip-sms-server-data
+resource "kubernetes_persistent_volume_claim" "goip-sms-server-data" {
+  metadata {
+    name      = "goip-sms-server-data"
+    namespace = kubernetes_namespace.sms.metadata[0].name
+  }
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "5Gi" # Adjust the storage size as needed
       }
     }
   }
